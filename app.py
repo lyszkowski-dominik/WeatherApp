@@ -4,10 +4,12 @@ from flask import request, redirect, url_for
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from flask import flash
 import requests
 import sys
 
 app = Flask(__name__)
+app.secret_key = 'super secret'
 Base = declarative_base()
 
 
@@ -30,20 +32,28 @@ def addCard(name):
     for card in cards:
         if card.name == name:
             print('This city already exists')
+            flash('The city has already been added to the list!')
             isInDB = True
             session.close()
     if isInDB == False:
-        session.add(weathercard)
-        session.commit()
-        session.close()
+        if getWeatherInfo(name) == False:
+            flash("The city doesn't exist!")
+        else:
+            session.add(weathercard)
+            session.commit()
+            session.close()
 
 
 def getWeatherInfo(city_name):
     url = 'http://api.openweathermap.org/data/2.5/weather?q={}&appid=a01c39f2c2eab487e738bd5930119d7a&units=metric&lang=pl'.format(
         city_name)
     r = requests.get(url).json()
-    req_weather = {'name': r['name'], 'temp': round(r['main']['temp'], 1), 'state': r['weather'][0]['description']}
-    return req_weather
+    if r['cod'] == '404':
+        return False
+    else:
+        req_weather = {'name': r['name'], 'temp': round(r['main']['temp'], 1), 'state': r['weather'][0]['description']}
+        print(req_weather)
+        return req_weather
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -56,10 +66,8 @@ def addCardsOnSite():
     weather_list = []
     while i < len(all_cards):
         for card in all_cards:
-            print(card.name)
             req_weather = getWeatherInfo(card.name)
             weather_list.append(req_weather)
-            #ranvar = 'weather{}'.format(i)
             i += 1
         return weather_list
 
@@ -70,8 +78,28 @@ def add_city():
         request_city = request.form['city_name']
         addCard(request_city)
         weather_list = addCardsOnSite()
-        print(weather_list)
         return render_template('index.html', weather_list = weather_list)
+
+@app.route('/delete/<city_id>', methods=['GET', 'POST'])
+def delete(city_id):
+    cards = session.query(WeatherCard).all()
+    session.close()
+    isInDB = False
+    for card in cards:
+        if card.name == city_id:
+            print('There is city in DB - removing...')
+            isInDB = True
+            city = card
+            session.close()
+    if isInDB == False:
+        print('No such city in database')
+        return redirect('/')
+    else:
+        session.delete(city)
+        session.commit()
+        session.close()
+        weather_list = addCardsOnSite()
+        return render_template('index.html', weather_list=weather_list)
 
 
 

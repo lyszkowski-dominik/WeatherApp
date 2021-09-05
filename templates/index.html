@@ -30,8 +30,8 @@
     {% for weather in weather_list %}
             <div class="card day">
                  <div class="delete-wrapper">
-                        <form action="#" method="POST">
-                                <input type="hidden" name="id" value="">
+                        <form action="/delete/{{weather.name}}" method="POST">
+                                <input type="hidden" name="id" value="{{weather.name}}">
                                 <button class="delete-button" type="submit">&#10006;</button>
                         </form>
                     </div>
