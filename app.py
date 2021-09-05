@@ -1,9 +1,9 @@
 from flask import Flask
 from flask import render_template
-from flask import request, redirect, url_for
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from flask import request, redirect
+from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker
 from flask import flash
 import requests
 import sys
@@ -18,10 +18,12 @@ class WeatherCard(Base):
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String, unique=True, nullable=False)
 
+
 engine = create_engine('sqlite:///weather.db', echo=True)
 Base.metadata.create_all(bind=engine)
 Session = sessionmaker(bind=engine)
 session = Session()
+
 
 def addCard(name):
     weathercard = WeatherCard()
@@ -35,8 +37,8 @@ def addCard(name):
             flash('The city has already been added to the list!')
             isInDB = True
             session.close()
-    if isInDB == False:
-        if getWeatherInfo(name) == False:
+    if not isInDB:
+        if not getWeatherInfo(name):
             flash("The city doesn't exist!")
         else:
             session.add(weathercard)
@@ -54,10 +56,13 @@ def getWeatherInfo(city_name):
         req_weather = {'name': r['name'], 'temp': round(r['main']['temp'], 1), 'state': r['weather'][0]['description']}
         print(req_weather)
         return req_weather
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
 # don't change the following way to run flask:
+
 
 def addCardsOnSite():
     all_cards = session.query(WeatherCard).all()
@@ -78,7 +83,8 @@ def add_city():
         request_city = request.form['city_name']
         addCard(request_city)
         weather_list = addCardsOnSite()
-        return render_template('index.html', weather_list = weather_list)
+        return render_template('index.html', weather_list=weather_list)
+
 
 @app.route('/delete/<city_id>', methods=['GET', 'POST'])
 def delete(city_id):
@@ -91,7 +97,7 @@ def delete(city_id):
             isInDB = True
             city = card
             session.close()
-    if isInDB == False:
+    if not isInDB:
         print('No such city in database')
         return redirect('/')
     else:
@@ -100,8 +106,6 @@ def delete(city_id):
         session.close()
         weather_list = addCardsOnSite()
         return render_template('index.html', weather_list=weather_list)
-
-
 
 
 if __name__ == '__main__':
